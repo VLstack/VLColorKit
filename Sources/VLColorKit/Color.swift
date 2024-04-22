@@ -1,8 +1,7 @@
 import SwiftUI
 import UIKit
 
-public
-extension Color
+public extension Color
 {
  /// Initializes a color object from a hexadecimal string representation.
  ///
@@ -58,7 +57,7 @@ extension Color
   return String(format: "%02lX%02lX%02lX", lroundf(r * 255), lroundf(g * 255), lroundf(b * 255))
  }
  
- // TODO: check
+ // TODO: check if it is correct and better than current implement
  var toHexOptimizedToCheck: String
  {
   let components = UIColor(self).cgColor.components ?? []

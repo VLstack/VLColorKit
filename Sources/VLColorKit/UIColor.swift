@@ -1,7 +1,6 @@
 import UIKit
 
-public
-extension UIColor
+public extension UIColor
 {
  /// Determines if the color is dark or light based on its luminance.
  ///
