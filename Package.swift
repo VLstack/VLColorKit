@@ -12,9 +12,7 @@ let package = Package(name: "VLColorKit",
                       ],
                       targets:
                       [
-                       .target(name: "VLColorKit"),
-                       .testTarget(name: "VLColorKitTests",
-                                   dependencies: [ "VLColorKit" ])
+                       .target(name: "VLColorKit")
                       ])
 
 // https://medium.com/jamf-engineering/swift-6-upgrade-preparation-0941fbea2db6
