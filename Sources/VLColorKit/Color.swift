@@ -23,14 +23,14 @@ extension Color
   UIColor(self).isDark
  }
 
- var complement: Color { Color(uiColor: UIColor(self).complement) }
- var splitComplement0: Color { Color(uiColor: UIColor(self).splitComplement0) }
- var splitComplement1: Color { Color(uiColor: UIColor(self).splitComplement1) }
- var triadic0: Color { Color(uiColor: UIColor(self).triadic0) }
- var triadic1: Color { Color(uiColor: UIColor(self).triadic1) }
- var tetradic0: Color { Color(uiColor: UIColor(self).tetradic0) }
- var tetradic1: Color { Color(uiColor: UIColor(self).tetradic1) }
- var tetradic2: Color { Color(uiColor: UIColor(self).tetradic2) }
- var analagous0: Color { Color(uiColor: UIColor(self).analagous0) }
- var analagous1: Color { Color(uiColor: UIColor(self).analagous0) }
+ public var complement: Color { Color(uiColor: UIColor(self).complement) }
+ public var splitComplement0: Color { Color(uiColor: UIColor(self).splitComplement0) }
+ public var splitComplement1: Color { Color(uiColor: UIColor(self).splitComplement1) }
+ public var triadic0: Color { Color(uiColor: UIColor(self).triadic0) }
+ public var triadic1: Color { Color(uiColor: UIColor(self).triadic1) }
+ public var tetradic0: Color { Color(uiColor: UIColor(self).tetradic0) }
+ public var tetradic1: Color { Color(uiColor: UIColor(self).tetradic1) }
+ public var tetradic2: Color { Color(uiColor: UIColor(self).tetradic2) }
+ public var analagous0: Color { Color(uiColor: UIColor(self).analagous0) }
+ public var analagous1: Color { Color(uiColor: UIColor(self).analagous0) }
 }
