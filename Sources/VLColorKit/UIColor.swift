@@ -105,4 +105,26 @@ extension UIColor
 
   return prefixed ? "#" + hexString : hexString
  }
+
+ var complement: UIColor { self.withHue(offset: 0.5) }
+ var splitComplement0: UIColor { self.withHue(offset: 150 / 360) }
+ var splitComplement1: UIColor { self.withHue(offset: 210 / 360) }
+ var triadic0: UIColor { self.withHue(offset: 120 / 360) }
+ var triadic1: UIColor { self.withHue(offset: 240 / 360) }
+ var tetradic0: UIColor { self.withHue(offset: 0.25) }
+ var tetradic1: UIColor { self.complement }
+ var tetradic2: UIColor { self.withHue(offset: 0.75) }
+ var analagous0: UIColor { self.withHue(offset: -1 / 12) }
+ var analagous1: UIColor { self.withHue(offset: 1 / 12) }
+
+ func withHue(offset: CGFloat) -> UIColor
+ {
+  var h: CGFloat = 0
+  var s: CGFloat = 0
+  var b: CGFloat = 0
+  var a: CGFloat = 0
+  self.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+
+  return UIColor(hue: fmod(h + offset, 1), saturation: s, brightness: b, alpha: a)
+ }
 }
