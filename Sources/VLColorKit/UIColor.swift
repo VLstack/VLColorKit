@@ -34,27 +34,37 @@ extension UIColor
   self.init(red: CGFloat(red) / 255, green: CGFloat(green) / 255, blue: CGFloat(blue) / 255, alpha: CGFloat(alpha) / 255)
  }
 
+ @available(*, deprecated, renamed: "luminance", message: "Use .luminance instead")
  public var relativeLuminance: CGFloat
  {
-  var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-  getRed(&r, green: &g, blue: &b, alpha: &a)
+  self.luminance
+ }
 
-  func adjust(_ value: CGFloat) -> CGFloat
+ public var luminance: CGFloat
+ {
+  var r: CGFloat = 0
+  var g: CGFloat = 0
+  var b: CGFloat = 0
+  var a: CGFloat = 1
+  guard self.getRed(&r, green: &g, blue: &b, alpha: &a)
+  else { return 1 }
+
+  func map(_ v: CGFloat) -> CGFloat
   {
-   return (value <= 0.03928) ? (value / 12.92) : pow((value + 0.055) / 1.055, 2.4)
+   return (v <= 0.03928) ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
   }
 
-  let rl = adjust(r)
-  let gl = adjust(g)
-  let bl = adjust(b)
+  let rl = map(r)
+  let gl = map(g)
+  let bl = map(b)
 
   return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
  }
 
  public func contrastRatio(with other: UIColor) -> CGFloat
  {
-  let l1 = self.relativeLuminance
-  let l2 = other.relativeLuminance
+  let l1 = self.luminance
+  let l2 = other.luminance
 
   return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
  }
@@ -169,6 +179,12 @@ extension UIColor
   }
 
   return (hue: h, saturation: s, lightness: l, alpha: a)
+ }
+
+ internal func adjustedLightness(to newLightness: CGFloat) -> UIColor?
+ {
+  guard let hsl = toHSL() else { return nil }
+  return UIColor(hue: hsl.hue, saturation: hsl.saturation, brightness: newLightness, alpha: hsl.alpha)
  }
 
  public var complement: UIColor { self.withHue(offset: 0.5) }

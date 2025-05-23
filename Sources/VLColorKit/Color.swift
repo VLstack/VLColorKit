@@ -9,6 +9,11 @@ extension Color
   self.init(uiColor: UIColor(hex: hex) ?? fallback)
  }
 
+ public var luminance: CGFloat
+ {
+  UIColor(self).luminance
+ }
+
  public func toHex(prefixed: Bool = false,
                    includeAlpha: Bool = false,
                    fallback: String = "000000") -> String
@@ -22,7 +27,6 @@ extension Color
  {
   UIColor(self).toHSL()
  }
-
 
  public var isDark: Bool
  {
