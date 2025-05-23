@@ -74,9 +74,20 @@ extension UIColor
   self.init(red: r + m, green: g + m, blue: b + m, alpha: alpha)
  }
 
+ public convenience init(hue: Int,
+                         saturation: Int,
+                         lightness: Int,
+                         alpha: CGFloat)
+ {
+  self.init(hue: CGFloat(hue) / 360,
+            saturation: CGFloat(saturation) / 100,
+            lightness: CGFloat(lightness) / 100,
+            alpha: alpha)
+ }
+
  public var bestTextColor: UIColor
  {
-  let variants = [ adjustedLightness(to: 0.98), adjustedLightness(to: 0.1) ].compactMap { $0 }
+  let variants = [ adjustedLightness(to: 0.98), adjustedLightness(to: 0.25) ].compactMap { $0 }
 
   return bestContrast(threshold: WCAG.AAA_small, colors: variants)
          ?? bestContrast(threshold: WCAG.AAA_large, colors: variants)
