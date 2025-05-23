@@ -87,16 +87,42 @@ extension UIColor
   guard let components = self.cgColor.components
   else { return prefixed ? "#" + fallback : fallback }
 
-  let red = Int(components[0] * 255.0)
-  let green = Int(components[1] * 255.0)
-  let blue = Int(components[2] * 255.0)
+  let colorSpaceModel = self.cgColor.colorSpace?.model
+
+  var red: Int = 0
+  var green: Int = 0
+  var blue: Int = 0
+  var alpha: Int = 255
+
+  switch colorSpaceModel
+  {
+   case .monochrome:
+    let gray = Int(components[0] * 255.0)
+    red = gray
+    green = gray
+    blue = gray
+    if components.count > 1 { alpha = Int(components[1] * 255.0) }
+
+   case .rgb:
+    if components.count >= 3
+    {
+     red = Int(components[0] * 255.0)
+     green = Int(components[1] * 255.0)
+     blue = Int(components[2] * 255.0)
+    }
+    if components.count >= 4
+    {
+     alpha = Int(components[3] * 255.0)
+    }
+
+   default:
+    return prefixed ? "#" + fallback : fallback
+  }
 
   let hexString: String
-  if includeAlpha,
-     let alpha = components.last
+  if includeAlpha
   {
-   let alphaValue = Int(alpha * 255.0)
-   hexString = String(format: "%02X%02X%02X%02X", red, green, blue, alphaValue)
+   hexString = String(format: "%02X%02X%02X%02X", red, green, blue, alpha)
   }
   else
   {
