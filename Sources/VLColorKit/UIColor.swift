@@ -45,6 +45,35 @@ extension UIColor
             alpha: CGFloat(alpha) / 255)
  }
 
+ public convenience init(hue: CGFloat,
+                         saturation: CGFloat,
+                         lightness: CGFloat,
+                         alpha: CGFloat)
+ {
+  let h = hue
+  let s = saturation
+  let l = lightness
+
+  let c = (1 - abs(2 * l - 1)) * s
+  let x = c * (1 - abs((h * 6).truncatingRemainder(dividingBy: 2) - 1))
+  let m = l - c / 2
+
+  var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+
+  switch h * 6
+  {
+   case 0..<1: (r, g, b) = (c, x, 0)
+   case 1..<2: (r, g, b) = (x, c, 0)
+   case 2..<3: (r, g, b) = (0, c, x)
+   case 3..<4: (r, g, b) = (0, x, c)
+   case 4..<5: (r, g, b) = (x, 0, c)
+   case 5..<6: (r, g, b) = (c, 0, x)
+   default:    (r, g, b) = (0, 0, 0)
+  }
+
+  self.init(red: r + m, green: g + m, blue: b + m, alpha: alpha)
+ }
+
  public var bestTextColor: UIColor
  {
   let variants = [ adjustedLightness(to: 0.9), adjustedLightness(to: 0.1) ].compactMap { $0 }
@@ -245,32 +274,10 @@ extension UIColor
  {
   guard let hsl = toHSL() else { return nil }
 
-  let h = hsl.hue
-  let s = hsl.saturation
-  let l = newLightness
-  let a = hsl.alpha
-
-  let q = l < 0.5 ? l * (1 + s) : l + s - l * s
-  let p = 2 * l - q
-
-  func hue2rgb(_ p: CGFloat, _ q: CGFloat, _ t: CGFloat) -> CGFloat
-  {
-   var t = t
-
-   if t < 0 { t += 1 }
-   if t > 1 { t -= 1 }
-   if t < 1/6 { return p + (q - p) * 6 * t }
-   if t < 1/2 { return q }
-   if t < 2/3 { return p + (q - p) * (2/3 - t) * 6 }
-
-   return p
-  }
-
-  let r = hue2rgb(p, q, h + 1/3)
-  let g = hue2rgb(p, q, h)
-  let b = hue2rgb(p, q, h - 1/3)
-
-  return UIColor(red: r, green: g, blue: b, alpha: a)
+  return UIColor(hue: hsl.hue,
+                 saturation: hsl.saturation,
+                 lightness: newLightness,
+                 alpha: hsl.alpha)
  }
 
  public var complement: UIColor { self.withHue(offset: 0.5) }
