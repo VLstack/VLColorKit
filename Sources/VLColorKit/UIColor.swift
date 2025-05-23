@@ -231,7 +231,7 @@ extension UIColor
   return prefixed ? "#" + hexString : hexString
  }
 
- public func toHSL() -> (hue: CGFloat, saturation: CGFloat, lightness: CGFloat, alpha: CGFloat)?
+ public func toHSLTODELETE() -> (hue: CGFloat, saturation: CGFloat, lightness: CGFloat, alpha: CGFloat)?
  {
   var r: CGFloat = 0
   var g: CGFloat = 0
@@ -265,6 +265,48 @@ extension UIColor
 
    h /= 6
    if h < 0 { h += 1 }
+  }
+
+  return (hue: h, saturation: s, lightness: l, alpha: a)
+ }
+
+ public func toHSL() -> (hue: CGFloat, saturation: CGFloat, lightness: CGFloat, alpha: CGFloat)?
+ {
+  var r: CGFloat = 0
+  var g: CGFloat = 0
+  var b: CGFloat = 0
+  var a: CGFloat = 0
+
+  guard self.getRed(&r, green: &g, blue: &b, alpha: &a)
+  else { return nil }
+
+  let maxVal = max(r, g, b)
+  let minVal = min(r, g, b)
+  let delta = maxVal - minVal
+
+  var h: CGFloat = 0
+  var s: CGFloat = 0
+  let l: CGFloat = (maxVal + minVal) / 2
+
+  if delta != 0
+  {
+   s = delta / (1 - abs(2 * l - 1))
+
+   if maxVal == r
+   {
+    h = (g - b) / delta
+    if g < b { h += 6 }
+   }
+   else if maxVal == g
+   {
+    h = (b - r) / delta + 2
+   }
+   else
+   {
+    h = (r - g) / delta + 4
+   }
+
+   h /= 6
   }
 
   return (hue: h, saturation: s, lightness: l, alpha: a)
