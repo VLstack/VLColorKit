@@ -9,6 +9,11 @@ extension Color
   self.init(uiColor: UIColor(hex: hex) ?? fallback)
  }
 
+ public var bestTextColor: UIColor
+ {
+  UIColor(self).bestTextColor
+ }
+
  public var luminance: CGFloat
  {
   UIColor(self).luminance

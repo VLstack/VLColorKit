@@ -2,6 +2,14 @@ import UIKit
 
 extension UIColor
 {
+ private enum WCAG
+ {
+  static let AA_small: CGFloat = 4.5
+  static let AA_large: CGFloat = 3.0
+  static let AAA_small: CGFloat = 7.0
+  static let AAA_large: CGFloat = 4.5
+ }
+
  public convenience init?(hex: String)
  {
   var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
@@ -31,7 +39,59 @@ extension UIColor
     return nil
   }
 
-  self.init(red: CGFloat(red) / 255, green: CGFloat(green) / 255, blue: CGFloat(blue) / 255, alpha: CGFloat(alpha) / 255)
+  self.init(red: CGFloat(red) / 255,
+            green: CGFloat(green) / 255,
+            blue: CGFloat(blue) / 255,
+            alpha: CGFloat(alpha) / 255)
+ }
+
+ public var bestTextColor: UIColor
+ {
+  let variants = [ adjustedLightness(to: 0.9), adjustedLightness(to: 0.1) ].compactMap { $0 }
+
+  return bestContrast(threshold: WCAG.AAA_small, colors: variants)
+         ?? bestContrast(threshold: WCAG.AAA_large, colors: variants)
+         ?? bestLuminance(threshold: 0.5, colors: variants)
+         ?? bestLuminance(threshold: 0.5, colors: [ .white, .black ])
+         ?? .black
+ }
+
+ internal func bestContrast(threshold: CGFloat,
+                           colors: [ UIColor ]) -> UIColor?
+ {
+  findBest(threshold: threshold,
+           predicate: { contrastRatio(with: $0) },
+           colors: colors)
+ }
+
+ internal func bestLuminance(threshold: CGFloat,
+                             colors: [ UIColor ]) -> UIColor?
+ {
+  let baseLuminance = luminance
+
+  return findBest(threshold: threshold,
+                  predicate: { abs($0.luminance - baseLuminance) },
+                  colors: colors)
+ }
+
+ internal func findBest(threshold: CGFloat,
+                        predicate: (UIColor) -> CGFloat,
+                        colors: [ UIColor ]) -> UIColor?
+ {
+  var result: UIColor?
+  var currentThreshold = threshold
+
+  for color in colors
+  {
+   let value = predicate(color)
+   if value >= currentThreshold
+   {
+    currentThreshold = value
+    result = color
+   }
+  }
+
+  return result
  }
 
  @available(*, deprecated, renamed: "luminance", message: "Use .luminance instead")
