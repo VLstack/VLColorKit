@@ -18,6 +18,12 @@ extension Color
                       fallback: fallback)
  }
 
+ public func toHSL() -> (hue: CGFloat, saturation: CGFloat, lightness: CGFloat, alpha: CGFloat)?
+ {
+  UIColor(self).toHSL()
+ }
+
+
  public var isDark: Bool
  {
   UIColor(self).isDark

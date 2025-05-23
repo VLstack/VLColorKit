@@ -132,6 +132,45 @@ extension UIColor
   return prefixed ? "#" + hexString : hexString
  }
 
+ public func toHSL() -> (hue: CGFloat, saturation: CGFloat, lightness: CGFloat, alpha: CGFloat)?
+ {
+  var r: CGFloat = 0
+  var g: CGFloat = 0
+  var b: CGFloat = 0
+  var a: CGFloat = 0
+
+  guard self.getRed(&r, green: &g, blue: &b, alpha: &a)
+  else { return nil }
+
+  let maxVal = max(r, g, b)
+  let minVal = min(r, g, b)
+  let delta = maxVal - minVal
+
+  let l = (maxVal + minVal) / 2
+
+  var h: CGFloat = 0
+  var s: CGFloat = 0
+
+  if delta == 0
+  {
+   h = 0
+   s = 0
+  }
+  else
+  {
+   s = l < 0.5 ? delta / (maxVal + minVal) : delta / (2 - maxVal - minVal)
+
+   if maxVal == r { h = ((g - b) / delta).truncatingRemainder(dividingBy: 6) }
+   else if maxVal == g { h = ((b - r) / delta) + 2 }
+   else { h = ((r - g) / delta) + 4 }
+
+   h /= 6
+   if h < 0 { h += 1 }
+  }
+
+  return (hue: h, saturation: s, lightness: l, alpha: a)
+ }
+
  public var complement: UIColor { self.withHue(offset: 0.5) }
  public var splitComplement0: UIColor { self.withHue(offset: 150 / 360) }
  public var splitComplement1: UIColor { self.withHue(offset: 210 / 360) }
