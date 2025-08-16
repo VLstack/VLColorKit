@@ -1,6 +1,10 @@
+#if os(iOS) || os(tvOS) || os(watchOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
-extension UIColor
+extension VLColor
 {
  private enum WCAG
  {
@@ -10,30 +14,49 @@ extension UIColor
   static let AAA_large: CGFloat = 4.5
  }
 
- public convenience init?(hex: String)
+ public convenience init?(hex: String,
+                          alphaFirst: Bool = false)
  {
   var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
   if hexString.hasPrefix("#") { hexString.removeFirst() }
+
+  if hexString.count == 3
+  {
+   let r = String(repeating: hexString[hexString.startIndex], count: 2)
+   let g = String(repeating: hexString[hexString.index(hexString.startIndex, offsetBy: 1)], count: 2)
+   let b = String(repeating: hexString[hexString.index(hexString.startIndex, offsetBy: 2)], count: 2)
+   hexString = r + g + b
+  }
 
   let scanner = Scanner(string: hexString)
 
   var rgbValue: UInt64 = 0
   guard scanner.scanHexInt64(&rgbValue) else { return nil }
 
-  var red, green, blue, alpha: UInt64
+  let red, green, blue, alpha: UInt64
   switch hexString.count
   {
    case 6:
-    red = (rgbValue >> 16)
-    green = (rgbValue >> 8 & 0xFF)
-    blue = (rgbValue & 0xFF)
+    red = (rgbValue >> 16) & 0xFF
+    green = (rgbValue >> 8) & 0xFF
+    blue = rgbValue & 0xFF
     alpha = 255
 
    case 8:
-    red = (rgbValue >> 16)
-    green = (rgbValue >> 8 & 0xFF)
-    blue = (rgbValue & 0xFF)
-    alpha = rgbValue >> 24
+    if alphaFirst
+    {
+     alpha   = (rgbValue >> 24) & 0xFF
+     red = (rgbValue >> 16) & 0xFF
+     green  = (rgbValue >> 8) & 0xFF
+     blue = rgbValue & 0xFF
+    }
+    else
+    {
+     red   = (rgbValue >> 24) & 0xFF
+     green = (rgbValue >> 16) & 0xFF
+     blue  = (rgbValue >> 8) & 0xFF
+     alpha = rgbValue & 0xFF
+    }
 
    default:
     return nil
@@ -85,7 +108,7 @@ extension UIColor
             alpha: alpha)
  }
 
- public var bestTextColor: UIColor
+ public var bestTextColor: VLColor
  {
   let variants = [ adjustedLightness(to: 0.98), adjustedLightness(to: 0.25) ].compactMap { $0 }
 
@@ -97,7 +120,7 @@ extension UIColor
  }
 
  internal func bestContrast(threshold: CGFloat,
-                           colors: [ UIColor ]) -> UIColor?
+                           colors: [ VLColor ]) -> VLColor?
  {
   findBest(threshold: threshold,
            predicate: { contrastRatio(with: $0) },
@@ -105,7 +128,7 @@ extension UIColor
  }
 
  internal func bestLuminance(threshold: CGFloat,
-                             colors: [ UIColor ]) -> UIColor?
+                             colors: [ VLColor ]) -> VLColor?
  {
   let baseLuminance = luminance
 
@@ -115,10 +138,10 @@ extension UIColor
  }
 
  internal func findBest(threshold: CGFloat,
-                        predicate: (UIColor) -> CGFloat,
-                        colors: [ UIColor ]) -> UIColor?
+                        predicate: (VLColor) -> CGFloat,
+                        colors: [ VLColor ]) -> VLColor?
  {
-  var result: UIColor?
+  var result: VLColor?
   var currentThreshold = threshold
 
   for color in colors
@@ -146,8 +169,8 @@ extension UIColor
   var g: CGFloat = 0
   var b: CGFloat = 0
   var a: CGFloat = 1
-  guard self.getRed(&r, green: &g, blue: &b, alpha: &a)
-  else { return 1 }
+
+  guard self.getRGBA(&r, &g, &b, &a) else { return 1 }
 
   func map(_ v: CGFloat) -> CGFloat
   {
@@ -161,7 +184,7 @@ extension UIColor
   return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
  }
 
- public func contrastRatio(with other: UIColor) -> CGFloat
+ public func contrastRatio(with other: VLColor) -> CGFloat
  {
   let l1 = self.luminance
   let l2 = other.luminance
@@ -171,8 +194,8 @@ extension UIColor
 
  public var isDark: Bool
  {
-  let black = UIColor.black
-  let white = UIColor.white
+  let black = VLColor.black
+  let white = VLColor.white
 
   let contrastWithBlack = self.contrastRatio(with: black)
   let contrastWithWhite = self.contrastRatio(with: white)
@@ -194,8 +217,12 @@ extension UIColor
                    includeAlpha: Bool = false,
                    fallback: String = "000000") -> String
  {
-  guard let components = self.cgColor.components
-  else { return prefixed ? "#" + fallback : fallback }
+  #if os(macOS)
+  guard let rgbColor = self.usingColorSpace(.deviceRGB),
+        let components = rgbColor.cgColor.components else { return prefixed ? "#" + fallback : fallback }
+  #else
+  guard let components = self.cgColor.components else { return prefixed ? "#" + fallback : fallback }
+  #endif
 
   let colorSpaceModel = self.cgColor.colorSpace?.model
 
@@ -249,7 +276,7 @@ extension UIColor
   var b: CGFloat = 0
   var a: CGFloat = 0
 
-  guard self.getRed(&r, green: &g, blue: &b, alpha: &a)
+  guard self.getRGBA(&r, &g, &b, &a)
   else { return nil }
 
   let maxVal = max(r, g, b)
@@ -284,35 +311,42 @@ extension UIColor
   return (hue: h, saturation: s, lightness: l, alpha: a)
  }
 
- internal func adjustedLightness(to newLightness: CGFloat) -> UIColor?
+ internal func adjustedLightness(to newLightness: CGFloat) -> VLColor?
  {
   guard let hsl = toHSL() else { return nil }
 
-  return UIColor(hue: hsl.hue,
+  return VLColor(hue: hsl.hue,
                  saturation: hsl.saturation,
                  lightness: newLightness,
                  alpha: hsl.alpha)
  }
 
- public var complement: UIColor { self.withHue(offset: 0.5) }
- public var splitComplement0: UIColor { self.withHue(offset: 150 / 360) }
- public var splitComplement1: UIColor { self.withHue(offset: 210 / 360) }
- public var triadic0: UIColor { self.withHue(offset: 120 / 360) }
- public var triadic1: UIColor { self.withHue(offset: 240 / 360) }
- public var tetradic0: UIColor { self.withHue(offset: 0.25) }
- public var tetradic1: UIColor { self.complement }
- public var tetradic2: UIColor { self.withHue(offset: 0.75) }
- public var analagous0: UIColor { self.withHue(offset: -1 / 12) }
- public var analagous1: UIColor { self.withHue(offset: 1 / 12) }
+ public var complement: VLColor { self.withHue(offset: 0.5) }
+ public var splitComplement0: VLColor { self.withHue(offset: 150 / 360) }
+ public var splitComplement1: VLColor { self.withHue(offset: 210 / 360) }
+ public var triadic0: VLColor { self.withHue(offset: 120 / 360) }
+ public var triadic1: VLColor { self.withHue(offset: 240 / 360) }
+ public var tetradic0: VLColor { self.withHue(offset: 0.25) }
+ public var tetradic1: VLColor { self.complement }
+ public var tetradic2: VLColor { self.withHue(offset: 0.75) }
+ public var analagous0: VLColor { self.withHue(offset: -1 / 12) }
+ public var analagous1: VLColor { self.withHue(offset: 1 / 12) }
 
- internal func withHue(offset: CGFloat) -> UIColor
+ internal func withHue(offset: CGFloat) -> VLColor
  {
+  var color = self
+  #if os(macOS)
+  if let rgb = color.usingColorSpace(.deviceRGB)
+  {
+   color = rgb
+  }
+  #endif
   var h: CGFloat = 0
   var s: CGFloat = 0
   var b: CGFloat = 0
   var a: CGFloat = 0
-  self.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+  color.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
 
-  return UIColor(hue: fmod(h + offset, 1), saturation: s, brightness: b, alpha: a)
+  return VLColor(hue: fmod(h + offset, 1), saturation: s, brightness: b, alpha: a)
  }
 }
