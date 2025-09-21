@@ -416,33 +416,43 @@ extension VLColor
  }
 
  /// Returns the complementary color (opposite hue).
+ @inlinable
  public var complement: VLColor { self._withHue(offset: 0.5) }
 
  /// Returns the first split-complementary color (150° hue offset).
+ @inlinable
  public var splitComplement0: VLColor { self._withHue(offset: 150 / 360) }
 
  /// Returns the second split-complementary color (210° hue offset).
+ @inlinable
  public var splitComplement1: VLColor { self._withHue(offset: 210 / 360) }
 
  /// Returns the first triadic color (120° hue offset).
+ @inlinable
  public var triadic0: VLColor { self._withHue(offset: 120 / 360) }
 
  /// Returns the second triadic color (240° hue offset).
+ @inlinable
  public var triadic1: VLColor { self._withHue(offset: 240 / 360) }
 
  /// Returns the first tetradic color (90° hue offset, i.e., 0.25 in 0–1 scale).
+ @inlinable
  public var tetradic0: VLColor { self._withHue(offset: 0.25) }
 
  /// Returns the second tetradic color (the complementary color).
+ @inlinable
  public var tetradic1: VLColor { self.complement }
 
  /// Returns the third tetradic color (270° hue offset, i.e., 0.75 in 0–1 scale).
+ @inlinable
  public var tetradic2: VLColor { self._withHue(offset: 0.75) }
 
  /// Returns the first analogous color (30° counter-clockwise hue offset, i.e., -1/12).
+ @inlinable
  public var analogous0: VLColor { self._withHue(offset: -1 / 12) }
 
  /// Returns the second analogous color (30° clockwise hue offset, i.e., 1/12).
+ @inlinable
  public var analogous1: VLColor { self._withHue(offset: 1 / 12) }
 
  // MARK: - Deprecated API
