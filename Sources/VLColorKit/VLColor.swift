@@ -6,6 +6,7 @@ import AppKit
 
 extension VLColor
 {
+ // MARK: - Private API
  private enum WCAG
  {
   static let AA_small: CGFloat = 4.5
@@ -14,6 +15,13 @@ extension VLColor
   static let AAA_large: CGFloat = 4.5
  }
 
+ // MARK: - Public API
+ /// Initializes a color from a hex string.
+ /// Supports 3, 6, or 8 character formats, with optional alpha first.
+ /// - Parameters:
+ ///   - hex: The hex string representation of the color (e.g. "#FF0000", "F00", "80FF0000").
+ ///   - alphaFirst: If true and hex has 8 characters, the first byte is treated as alpha.
+ /// - Returns: A VLColor instance, or nil if the string is invalid.
  public convenience init?(hex: String,
                           alphaFirst: Bool = false)
  {
@@ -68,6 +76,12 @@ extension VLColor
             alpha: CGFloat(alpha) / 255)
  }
 
+ /// Initializes a color using HSL (Hue, Saturation, Lightness) components.
+ /// - Parameters:
+ ///   - hue: Hue value in [0,1].
+ ///   - saturation: Saturation value in [0,1].
+ ///   - lightness: Lightness value in [0,1].
+ ///   - alpha: Alpha value in [0,1].
  public convenience init(hue: CGFloat,
                          saturation: CGFloat,
                          lightness: CGFloat,
@@ -97,6 +111,12 @@ extension VLColor
   self.init(red: r + m, green: g + m, blue: b + m, alpha: alpha)
  }
 
+ /// Initializes a color using integer HSL values.
+ /// - Parameters:
+ ///   - hue: Hue in degrees [0,360].
+ ///   - saturation: Saturation in percent [0,100].
+ ///   - lightness: Lightness in percent [0,100].
+ ///   - alpha: Alpha value in [0,1].
  public convenience init(hue: Int,
                          saturation: Int,
                          lightness: Int,
@@ -108,6 +128,9 @@ extension VLColor
             alpha: alpha)
  }
 
+ /// Returns a color suitable for text drawn on this color.
+ /// Chooses the variant that provides the best contrast according to WCAG AAA.
+ /// Falls back to black or white if no variant meets thresholds.
  public var bestTextColor: VLColor
  {
   let variants = [ adjustedLightness(to: 0.98), adjustedLightness(to: 0.25) ].compactMap { $0 }
@@ -119,6 +142,11 @@ extension VLColor
          ?? .black
  }
 
+ /// Returns the color with the best contrast above a threshold.
+ /// - Parameters:
+ ///   - threshold: Minimum contrast ratio to satisfy.
+ ///   - colors: Candidate colors.
+ /// - Returns: The color that meets or exceeds the threshold, or nil.
  internal func bestContrast(threshold: CGFloat,
                            colors: [ VLColor ]) -> VLColor?
  {
@@ -127,6 +155,11 @@ extension VLColor
            colors: colors)
  }
 
+ /// Returns the color with the maximum luminance difference from self above a threshold.
+ /// - Parameters:
+ ///   - threshold: Minimum luminance difference.
+ ///   - colors: Candidate colors.
+ /// - Returns: The color that meets or exceeds the luminance threshold, or nil.
  internal func bestLuminance(threshold: CGFloat,
                              colors: [ VLColor ]) -> VLColor?
  {
@@ -137,6 +170,12 @@ extension VLColor
                   colors: colors)
  }
 
+ /// Finds the color that maximizes a given metric above a threshold.
+ /// - Parameters:
+ ///   - threshold: The minimum value required.
+ ///   - predicate: Closure that computes the metric for a color.
+ ///   - colors: Candidate colors.
+ /// - Returns: The color with the best value above threshold, or nil.
  internal func findBest(threshold: CGFloat,
                         predicate: (VLColor) -> CGFloat,
                         colors: [ VLColor ]) -> VLColor?
@@ -163,6 +202,9 @@ extension VLColor
   self.luminance
  }
 
+ /// Computes the relative luminance of the color according to WCAG.
+ /// Returns 0 for black and 1 for white.
+ /// Uses linearized RGB components.
  public var luminance: CGFloat
  {
   var r: CGFloat = 0
@@ -184,6 +226,9 @@ extension VLColor
   return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
  }
 
+ /// Returns the contrast ratio between this color and another color according to WCAG.
+ /// - Parameter other: The other color to compare.
+ /// - Returns: Contrast ratio (1.0 = no contrast, 21.0 = maximum contrast).
  public func contrastRatio(with other: VLColor) -> CGFloat
  {
   let l1 = self.luminance
@@ -192,6 +237,8 @@ extension VLColor
   return (max(l1, l2) + 0.05) / (min(l1, l2) + 0.05)
  }
 
+ /// Determines whether the color is "dark" based on contrast with black and white.
+ /// Returns true if white text would have better contrast.
  public var isDark: Bool
  {
   let black = VLColor.black
@@ -213,15 +260,24 @@ extension VLColor
   return (contrastWithBlack > contrastWithWhite) ? false : true
  }
 
+ /// Returns the hexadecimal string representation of the color.
+ /// Supports RGB and monochrome colors. Returns a fallback string if conversion fails.
+ /// - Parameters:
+ ///   - prefixed: If true, adds a "#" at the beginning.
+ ///   - includeAlpha: If true, appends the alpha component to the hex string.
+ ///   - fallback: String to return if conversion fails (default "000000").
+ /// - Returns: Hexadecimal color string (e.g. "#FF0000" or "#80FF0000").
  public func toHex(prefixed: Bool = false,
                    includeAlpha: Bool = false,
                    fallback: String = "000000") -> String
  {
   #if os(macOS)
   guard let rgbColor = self.usingColorSpace(.deviceRGB),
-        let components = rgbColor.cgColor.components else { return prefixed ? "#" + fallback : fallback }
+        let components = rgbColor.cgColor.components
+  else { return prefixed ? "#" + fallback : fallback }
   #else
-  guard let components = self.cgColor.components else { return prefixed ? "#" + fallback : fallback }
+  guard let components = self.cgColor.components
+  else { return prefixed ? "#" + fallback : fallback }
   #endif
 
   let colorSpaceModel = self.cgColor.colorSpace?.model
@@ -269,6 +325,9 @@ extension VLColor
   return prefixed ? "#" + hexString : hexString
  }
 
+ /// Converts the color to HSL representation.
+ /// - Returns: A tuple containing hue (0–1), saturation (0–1), lightness (0–1), and alpha (0–1),
+ ///            or `nil` if the color cannot provide RGBA components.
  public func toHSL() -> (hue: CGFloat, saturation: CGFloat, lightness: CGFloat, alpha: CGFloat)?
  {
   var r: CGFloat = 0
@@ -311,6 +370,9 @@ extension VLColor
   return (hue: h, saturation: s, lightness: l, alpha: a)
  }
 
+ /// Returns a copy of the color with the lightness component adjusted to `newLightness`.
+ /// - Parameter newLightness: Desired lightness (0–1).
+ /// - Returns: New `VLColor` with modified lightness, or `nil` if conversion to HSL fails.
  internal func adjustedLightness(to newLightness: CGFloat) -> VLColor?
  {
   guard let hsl = toHSL() else { return nil }
@@ -321,17 +383,39 @@ extension VLColor
                  alpha: hsl.alpha)
  }
 
+ /// Returns the complementary color (opposite hue).
  public var complement: VLColor { self.withHue(offset: 0.5) }
+
+ /// Returns the first split-complementary color (150° hue offset).
  public var splitComplement0: VLColor { self.withHue(offset: 150 / 360) }
+
+ /// Returns the second split-complementary color (210° hue offset).
  public var splitComplement1: VLColor { self.withHue(offset: 210 / 360) }
+
+ /// Returns the first triadic color (120° hue offset).
  public var triadic0: VLColor { self.withHue(offset: 120 / 360) }
+
+ /// Returns the second triadic color (240° hue offset).
  public var triadic1: VLColor { self.withHue(offset: 240 / 360) }
+
+ /// Returns the first tetradic color (90° hue offset, i.e., 0.25 in 0–1 scale).
  public var tetradic0: VLColor { self.withHue(offset: 0.25) }
+
+ /// Returns the second tetradic color (the complementary color).
  public var tetradic1: VLColor { self.complement }
+
+ /// Returns the third tetradic color (270° hue offset, i.e., 0.75 in 0–1 scale).
  public var tetradic2: VLColor { self.withHue(offset: 0.75) }
+
+ /// Returns the first analogous color (30° counter-clockwise hue offset, i.e., -1/12).
  public var analagous0: VLColor { self.withHue(offset: -1 / 12) }
+
+ /// Returns the second analogous color (30° clockwise hue offset, i.e., 1/12).
  public var analagous1: VLColor { self.withHue(offset: 1 / 12) }
 
+ /// Returns a copy of the color with its hue shifted by `offset`.
+ /// - Parameter offset: Hue offset (0–1), modulo 1 is applied.
+ /// - Returns: New `VLColor` with adjusted hue.
  internal func withHue(offset: CGFloat) -> VLColor
  {
   var color = self
