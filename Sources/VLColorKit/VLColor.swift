@@ -7,17 +7,19 @@ import AppKit
 extension VLColor
 {
  // MARK: - Private API
- private enum WCAG
+ @usableFromInline
+ internal enum WCAG
  {
-  static let AA_small: CGFloat = 4.5
-  static let AA_large: CGFloat = 3.0
-  static let AAA_small: CGFloat = 7.0
-  static let AAA_large: CGFloat = 4.5
+  @usableFromInline static let AA_small: CGFloat = 4.5
+  @usableFromInline static let AA_large: CGFloat = 3.0
+  @usableFromInline static let AAA_small: CGFloat = 7.0
+  @usableFromInline static let AAA_large: CGFloat = 4.5
  }
 
  /// Returns a copy of the color with the lightness component adjusted to `newLightness`.
  /// - Parameter newLightness: Desired lightness (0–1).
  /// - Returns: New `VLColor` with modified lightness, or `nil` if conversion to HSL fails.
+ @usableFromInline
  internal func _adjustedLightness(to newLightness: CGFloat) -> VLColor?
  {
   guard let hsl = self.toHSL() else { return nil }
@@ -33,6 +35,7 @@ extension VLColor
  ///   - threshold: Minimum contrast ratio to satisfy.
  ///   - colors: Candidate colors.
  /// - Returns: The color that meets or exceeds the threshold, or nil.
+ @usableFromInline
  internal func _bestContrast(threshold: CGFloat,
                              colors: [ VLColor ]) -> VLColor?
  {
@@ -46,6 +49,7 @@ extension VLColor
  ///   - threshold: Minimum luminance difference.
  ///   - colors: Candidate colors.
  /// - Returns: The color that meets or exceeds the luminance threshold, or nil.
+ @usableFromInline
  internal func _bestLuminance(threshold: CGFloat,
                               colors: [ VLColor ]) -> VLColor?
  {
@@ -62,6 +66,7 @@ extension VLColor
  ///   - predicate: Closure that computes the metric for a color.
  ///   - colors: Candidate colors.
  /// - Returns: The color with the best value above threshold, or nil.
+ @usableFromInline
  internal func _findBest(threshold: CGFloat,
                          predicate: (VLColor) -> CGFloat,
                          colors: [ VLColor ]) -> VLColor?
@@ -85,6 +90,7 @@ extension VLColor
  /// Returns a copy of the color with its hue shifted by `offset`.
  /// - Parameter offset: Hue offset (0–1), modulo 1 is applied.
  /// - Returns: New `VLColor` with adjusted hue.
+ @usableFromInline
  internal func _withHue(offset: CGFloat) -> VLColor
  {
   var color = self
@@ -171,14 +177,15 @@ extension VLColor
  ///   - saturation: Saturation value in [0,1].
  ///   - lightness: Lightness value in [0,1].
  ///   - alpha: Alpha value in [0,1].
+ @inlinable
  public convenience init(hue: CGFloat,
                          saturation: CGFloat,
                          lightness: CGFloat,
                          alpha: CGFloat)
  {
-  let h = hue
-  let s = saturation
-  let l = lightness
+  let h = hue.truncatingRemainder(dividingBy: 1)
+  let s = max(0, min(saturation, 1))
+  let l = max(0, min(lightness, 1))
 
   let c = (1 - abs(2 * l - 1)) * s
   let x = c * (1 - abs((h * 6).truncatingRemainder(dividingBy: 2) - 1))
@@ -206,6 +213,7 @@ extension VLColor
  ///   - saturation: Saturation in percent [0,100].
  ///   - lightness: Lightness in percent [0,100].
  ///   - alpha: Alpha value in [0,1].
+ @inlinable
  public convenience init(hue: Int,
                          saturation: Int,
                          lightness: Int,
@@ -220,6 +228,7 @@ extension VLColor
  /// Returns a color suitable for text drawn on this color.
  /// Chooses the variant that provides the best contrast according to WCAG AAA.
  /// Falls back to black or white if no variant meets thresholds.
+ @inlinable
  public var bestTextColor: VLColor
  {
   let variants = [
@@ -234,33 +243,10 @@ extension VLColor
          ?? .black
  }
 
- /// Computes the relative luminance of the color according to WCAG.
- /// Returns 0 for black and 1 for white.
- /// Uses linearized RGB components.
- public var luminance: CGFloat
- {
-  var r: CGFloat = 0
-  var g: CGFloat = 0
-  var b: CGFloat = 0
-  var a: CGFloat = 1
-
-  guard self.getRGBA(&r, &g, &b, &a) else { return 1 }
-
-  func map(_ v: CGFloat) -> CGFloat
-  {
-   return (v <= 0.03928) ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
-  }
-
-  let rl = map(r)
-  let gl = map(g)
-  let bl = map(b)
-
-  return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
- }
-
  /// Returns the contrast ratio between this color and another color according to WCAG.
  /// - Parameter other: The other color to compare.
  /// - Returns: Contrast ratio (1.0 = no contrast, 21.0 = maximum contrast).
+ @inlinable
  public func contrastRatio(with other: VLColor) -> CGFloat
  {
   let l1 = self.luminance
@@ -271,6 +257,7 @@ extension VLColor
 
  /// Determines whether the color is "dark" based on contrast with black and white.
  /// Returns true if white text would have better contrast.
+ @inlinable
  public var isDark: Bool
  {
   let black = VLColor.black
@@ -292,6 +279,31 @@ extension VLColor
   return (contrastWithBlack > contrastWithWhite) ? false : true
  }
 
+ /// Computes the relative luminance of the color according to WCAG.
+ /// Returns 0 for black and 1 for white.
+ /// Uses linearized RGB components.
+ @inlinable
+ public var luminance: CGFloat
+ {
+  var r: CGFloat = 0
+  var g: CGFloat = 0
+  var b: CGFloat = 0
+  var a: CGFloat = 1
+
+  guard self.getRGBA(&r, &g, &b, &a) else { return 1 }
+
+  func map(_ v: CGFloat) -> CGFloat
+  {
+   return (v <= 0.03928) ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+  }
+
+  let rl = map(r)
+  let gl = map(g)
+  let bl = map(b)
+
+  return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
+ }
+
  /// Returns the hexadecimal string representation of the color.
  /// Supports RGB and monochrome colors. Returns a fallback string if conversion fails.
  /// - Parameters:
@@ -299,6 +311,7 @@ extension VLColor
  ///   - includeAlpha: If true, appends the alpha component to the hex string.
  ///   - fallback: String to return if conversion fails (default "000000").
  /// - Returns: Hexadecimal color string (e.g. "#FF0000" or "#80FF0000").
+ @inlinable
  public func toHex(prefixed: Bool = false,
                    includeAlpha: Bool = false,
                    fallback: String = "000000") -> String

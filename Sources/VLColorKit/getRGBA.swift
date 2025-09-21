@@ -1,8 +1,10 @@
 #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+
 import UIKit
 
 extension UIColor
 {
+ @usableFromInline
  internal func getRGBA(_ red: inout CGFloat,
                        _ green: inout CGFloat,
                        _ blue: inout CGFloat,
@@ -18,6 +20,7 @@ import AppKit
 
 extension NSColor
 {
+ @usableFromInline
  internal func getRGBA(_ red: inout CGFloat,
                        _ green: inout CGFloat,
                        _ blue: inout CGFloat,
