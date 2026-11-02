@@ -1,4 +1,4 @@
-#if os(iOS) || os(tvOS) || os(watchOS)
+#if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
 import UIKit
 #elseif os(macOS)
 import AppKit
@@ -14,6 +14,19 @@ extension VLColor
   @usableFromInline static let AA_large: CGFloat = 3.0
   @usableFromInline static let AAA_small: CGFloat = 7.0
   @usableFromInline static let AAA_large: CGFloat = 4.5
+ }
+
+ /// Brings a hue back into [0, 1), whatever its sign.
+ /// - Parameter hue: Hue value, possibly negative or greater than 1.
+ /// - Returns: Equivalent hue in [0, 1).
+ @usableFromInline
+ internal static func _normalizedHue(_ hue: CGFloat) -> CGFloat
+ {
+  var h = hue.truncatingRemainder(dividingBy: 1)
+  if h < 0 { h += 1 }
+
+  // A tiny negative hue plus 1 can round to exactly 1
+  return h < 1 ? h : 0
  }
 
  /// Returns a copy of the color with the lightness component adjusted to `newLightness`.
@@ -88,25 +101,26 @@ extension VLColor
  }
 
  /// Returns a copy of the color with its hue shifted by `offset`.
- /// - Parameter offset: Hue offset (0–1), modulo 1 is applied.
- /// - Returns: New `VLColor` with adjusted hue.
+ /// The hue is read from the sRGB components, and the result is brought back into [0, 1).
+ /// - Parameter offset: Hue offset (0–1), may be negative.
+ /// - Returns: New `VLColor` with adjusted hue, or the color itself if its components cannot be read.
  @usableFromInline
  internal func _withHue(offset: CGFloat) -> VLColor
  {
-  var color = self
-#if os(macOS)
-  if let rgb = color.usingColorSpace(.deviceRGB)
-  {
-   color = rgb
-  }
-#endif
+  var r: CGFloat = 0
+  var g: CGFloat = 0
+  var b: CGFloat = 0
+  var a: CGFloat = 1
+
+  guard self.getRGBA(&r, &g, &b, &a) else { return self }
+
   var h: CGFloat = 0
   var s: CGFloat = 0
-  var b: CGFloat = 0
-  var a: CGFloat = 0
-  color.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+  var v: CGFloat = 0
+  var alpha: CGFloat = 1
+  VLColor(red: r, green: g, blue: b, alpha: a).getHue(&h, saturation: &s, brightness: &v, alpha: &alpha)
 
-  return VLColor(hue: fmod(h + offset, 1), saturation: s, brightness: b, alpha: a)
+  return VLColor(hue: VLColor._normalizedHue(h + offset), saturation: s, brightness: v, alpha: a)
  }
 
 
@@ -123,46 +137,38 @@ extension VLColor
   var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
   if hexString.hasPrefix("#") { hexString.removeFirst() }
 
+  guard hexString.allSatisfy(\.isHexDigit) else { return nil }
+
   if hexString.count == 3
   {
-   let r = String(repeating: hexString[hexString.startIndex], count: 2)
-   let g = String(repeating: hexString[hexString.index(hexString.startIndex, offsetBy: 1)], count: 2)
-   let b = String(repeating: hexString[hexString.index(hexString.startIndex, offsetBy: 2)], count: 2)
-   hexString = r + g + b
+   hexString = hexString.map { "\($0)\($0)" }.joined()
   }
 
-  let scanner = Scanner(string: hexString)
-
-  var rgbValue: UInt64 = 0
-  guard scanner.scanHexInt64(&rgbValue) else { return nil }
+  guard hexString.count == 6 || hexString.count == 8,
+        let rgbValue = UInt64(hexString, radix: 16)
+  else { return nil }
 
   let red, green, blue, alpha: UInt64
-  switch hexString.count
+  if hexString.count == 6
   {
-   case 6:
-    red = (rgbValue >> 16) & 0xFF
-    green = (rgbValue >> 8) & 0xFF
-    blue = rgbValue & 0xFF
-    alpha = 255
-
-   case 8:
-    if alphaFirst
-    {
-     alpha   = (rgbValue >> 24) & 0xFF
-     red = (rgbValue >> 16) & 0xFF
-     green  = (rgbValue >> 8) & 0xFF
-     blue = rgbValue & 0xFF
-    }
-    else
-    {
-     red   = (rgbValue >> 24) & 0xFF
-     green = (rgbValue >> 16) & 0xFF
-     blue  = (rgbValue >> 8) & 0xFF
-     alpha = rgbValue & 0xFF
-    }
-
-   default:
-    return nil
+   red = (rgbValue >> 16) & 0xFF
+   green = (rgbValue >> 8) & 0xFF
+   blue = rgbValue & 0xFF
+   alpha = 255
+  }
+  else if alphaFirst
+  {
+   alpha = (rgbValue >> 24) & 0xFF
+   red = (rgbValue >> 16) & 0xFF
+   green = (rgbValue >> 8) & 0xFF
+   blue = rgbValue & 0xFF
+  }
+  else
+  {
+   red = (rgbValue >> 24) & 0xFF
+   green = (rgbValue >> 16) & 0xFF
+   blue = (rgbValue >> 8) & 0xFF
+   alpha = rgbValue & 0xFF
   }
 
   self.init(red: CGFloat(red) / 255,
@@ -173,7 +179,7 @@ extension VLColor
 
  /// Initializes a color using HSL (Hue, Saturation, Lightness) components.
  /// - Parameters:
- ///   - hue: Hue value in [0,1].
+ ///   - hue: Hue value in [0,1]. Values outside this range, negative included, wrap around.
  ///   - saturation: Saturation value in [0,1].
  ///   - lightness: Lightness value in [0,1].
  ///   - alpha: Alpha value in [0,1].
@@ -183,7 +189,7 @@ extension VLColor
                          lightness: CGFloat,
                          alpha: CGFloat)
  {
-  let h = hue.truncatingRemainder(dividingBy: 1)
+  let h = VLColor._normalizedHue(hue)
   let s = max(0, min(saturation, 1))
   let l = max(0, min(lightness, 1))
 
@@ -191,25 +197,21 @@ extension VLColor
   let x = c * (1 - abs((h * 6).truncatingRemainder(dividingBy: 2) - 1))
   let m = l - c / 2
 
+  let sector = h * 6
   var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
-
-  switch h * 6
-  {
-   case 0..<1: (r, g, b) = (c, x, 0)
-   case 1..<2: (r, g, b) = (x, c, 0)
-   case 2..<3: (r, g, b) = (0, c, x)
-   case 3..<4: (r, g, b) = (0, x, c)
-   case 4..<5: (r, g, b) = (x, 0, c)
-   case 5..<6: (r, g, b) = (c, 0, x)
-   default:    (r, g, b) = (0, 0, 0)
-  }
+  if sector < 1 { (r, g, b) = (c, x, 0) }
+  else if sector < 2 { (r, g, b) = (x, c, 0) }
+  else if sector < 3 { (r, g, b) = (0, c, x) }
+  else if sector < 4 { (r, g, b) = (0, x, c) }
+  else if sector < 5 { (r, g, b) = (x, 0, c) }
+  else { (r, g, b) = (c, 0, x) }
 
   self.init(red: r + m, green: g + m, blue: b + m, alpha: alpha)
  }
 
  /// Initializes a color using integer HSL values.
  /// - Parameters:
- ///   - hue: Hue in degrees [0,360].
+ ///   - hue: Hue in degrees [0,360]. Values outside this range, negative included, wrap around.
  ///   - saturation: Saturation in percent [0,100].
  ///   - lightness: Lightness in percent [0,100].
  ///   - alpha: Alpha value in [0,1].
@@ -256,32 +258,16 @@ extension VLColor
  }
 
  /// Determines whether the color is "dark" based on contrast with black and white.
- /// Returns true if white text would have better contrast.
+ /// Returns true if white text would have at least as much contrast as black text.
  @inlinable
  public var isDark: Bool
  {
-  let black = VLColor.black
-  let white = VLColor.white
-
-  let contrastWithBlack = self.contrastRatio(with: black)
-  let contrastWithWhite = self.contrastRatio(with: white)
-
-  if contrastWithBlack >= 7.0
-  {
-   return false
-  }
-
-  if contrastWithWhite >= 7.0
-  {
-   return true
-  }
-
-  return (contrastWithBlack > contrastWithWhite) ? false : true
+  self.contrastRatio(with: .white) >= self.contrastRatio(with: .black)
  }
 
- /// Computes the relative luminance of the color according to WCAG.
+ /// Computes the relative luminance of the color according to WCAG, from its sRGB components.
  /// Returns 0 for black and 1 for white.
- /// Uses linearized RGB components.
+ /// Returns 1 if the components cannot be read (pattern colors, for example).
  @inlinable
  public var luminance: CGFloat
  {
@@ -294,7 +280,7 @@ extension VLColor
 
   func map(_ v: CGFloat) -> CGFloat
   {
-   return (v <= 0.03928) ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+   return (v <= 0.04045) ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
   }
 
   let rl = map(r)
@@ -304,73 +290,46 @@ extension VLColor
   return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl
  }
 
- /// Returns the hexadecimal string representation of the color.
- /// Supports RGB and monochrome colors. Returns a fallback string if conversion fails.
+ /// Returns the hexadecimal string representation of the color, in the sRGB color space.
+ /// Display P3 or extended sRGB colors are converted to sRGB first.
+ /// Returns a fallback string if conversion fails.
  /// - Parameters:
  ///   - prefixed: If true, adds a "#" at the beginning.
  ///   - includeAlpha: If true, appends the alpha component to the hex string.
  ///   - fallback: String to return if conversion fails (default "000000").
- /// - Returns: Hexadecimal color string (e.g. "#FF0000" or "#80FF0000").
+ /// - Returns: Hexadecimal color string (e.g. "#FF0000" or "#FF000080").
  @inlinable
  public func toHex(prefixed: Bool = false,
                    includeAlpha: Bool = false,
                    fallback: String = "000000") -> String
  {
-#if os(macOS)
-  guard let rgbColor = self.usingColorSpace(.deviceRGB),
-        let components = rgbColor.cgColor.components
+  var r: CGFloat = 0
+  var g: CGFloat = 0
+  var b: CGFloat = 0
+  var a: CGFloat = 1
+
+  guard self.getRGBA(&r, &g, &b, &a)
   else { return prefixed ? "#" + fallback : fallback }
-#else
-  guard let components = self.cgColor.components
-  else { return prefixed ? "#" + fallback : fallback }
-#endif
 
-  let colorSpaceModel = self.cgColor.colorSpace?.model
-
-  var red: Int = 0
-  var green: Int = 0
-  var blue: Int = 0
-  var alpha: Int = 255
-
-  switch colorSpaceModel
+  func byte(_ value: CGFloat) -> Int
   {
-   case .monochrome:
-    let gray = Int(components[0] * 255.0)
-    red = gray
-    green = gray
-    blue = gray
-    if components.count > 1 { alpha = Int(components[1] * 255.0) }
-
-   case .rgb:
-    if components.count >= 3
-    {
-     red = Int(components[0] * 255.0)
-     green = Int(components[1] * 255.0)
-     blue = Int(components[2] * 255.0)
-    }
-    if components.count >= 4
-    {
-     alpha = Int(components[3] * 255.0)
-    }
-
-   default:
-    return prefixed ? "#" + fallback : fallback
+   Int((value * 255).rounded())
   }
 
   let hexString: String
   if includeAlpha
   {
-   hexString = String(format: "%02X%02X%02X%02X", red, green, blue, alpha)
+   hexString = String(format: "%02X%02X%02X%02X", byte(r), byte(g), byte(b), byte(a))
   }
   else
   {
-   hexString = String(format: "%02X%02X%02X", red, green, blue)
+   hexString = String(format: "%02X%02X%02X", byte(r), byte(g), byte(b))
   }
 
   return prefixed ? "#" + hexString : hexString
  }
 
- /// Converts the color to HSL representation.
+ /// Converts the color to HSL representation, from its sRGB components.
  /// - Returns: A tuple containing hue (0–1), saturation (0–1), lightness (0–1), and alpha (0–1),
  ///            or `nil` if the color cannot provide RGBA components.
  public func toHSL() -> (hue: CGFloat, saturation: CGFloat, lightness: CGFloat, alpha: CGFloat)?
@@ -454,17 +413,4 @@ extension VLColor
  /// Returns the second analogous color (30° clockwise hue offset, i.e., 1/12).
  @inlinable
  public var analogous1: VLColor { self._withHue(offset: 1 / 12) }
-
- // MARK: - Deprecated API
- @available(*, deprecated, renamed: "analogous0", message: "Typo, use .analogous0 instead")
- public var analagous0: VLColor { self.analogous0 }
-
- @available(*, deprecated, renamed: "analogous1", message: "Typo, use .analogous1 instead")
- public var analagous1: VLColor { self.analogous1 }
-
- @available(*, deprecated, renamed: "luminance", message: "Use .luminance instead")
- public var relativeLuminance: CGFloat
- {
-  self.luminance
- }
 }

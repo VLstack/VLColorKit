@@ -56,9 +56,18 @@ extension Color
   Color(vlColor: VLColor(self).bestTextColor)
  }
 
- /// Returns the color that provides the best contrast for text drawn on this background.
- /// Uses the VLColor.bestTextColor logic (WCAG AAA standard).
- /// - Returns: A Color suitable for text on this background.
+ /// Returns the contrast ratio between this color and another color according to WCAG.
+ /// - Parameter other: The other color to compare.
+ /// - Returns: Contrast ratio (1.0 = no contrast, 21.0 = maximum contrast).
+ @inlinable
+ public func contrastRatio(with other: Color) -> CGFloat
+ {
+  VLColor(self).contrastRatio(with: VLColor(other))
+ }
+
+ /// Computes the relative luminance of the color according to WCAG.
+ /// Uses the VLColor.luminance logic.
+ /// - Returns: 0 for black, 1 for white.
  @inlinable
  public var luminance: CGFloat
  {
@@ -70,7 +79,7 @@ extension Color
  ///   - prefixed: If true, adds "#" at the beginning (default: false).
  ///   - includeAlpha: If true, includes alpha component (default: false).
  ///   - fallback: String to return if conversion fails (default: "000000").
- /// - Returns: Hex string of the color (e.g. "#FF0000" or "#80FF0000").
+ /// - Returns: Hex string of the color (e.g. "#FF0000" or "#FF000080").
  @inlinable
  public func toHex(prefixed: Bool = false,
                    includeAlpha: Bool = false,
@@ -90,7 +99,7 @@ extension Color
  }
 
  /// Determines whether this color is considered "dark".
- /// Returns true if white text would provide better contrast.
+ /// Returns true if white text would provide at least as much contrast as black text.
  @inlinable
  public var isDark: Bool
  {
@@ -136,11 +145,4 @@ extension Color
  /// Returns the second analogous color (30° clockwise hue offset, i.e., 1/12).
  @inlinable
  public var analogous1: Color { Color(vlColor: VLColor(self).analogous1) }
-
- // MARK: - Deprecated API
- @available(*, deprecated, renamed: "analogous0", message: "Typo, use .analogous0 instead")
- public var analagous0: Color { self.analogous0 }
-
- @available(*, deprecated, renamed: "analogous1", message: "Typo, use .analogous1 instead")
- public var analagous1: Color { self.analogous1 }
 }

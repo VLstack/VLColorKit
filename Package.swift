@@ -12,5 +12,7 @@ let package = Package(name: "VLColorKit",
                       ],
                       targets:
                       [
-                       .target(name: "VLColorKit")
+                       .target(name: "VLColorKit"),
+                       .testTarget(name: "VLColorKitTests",
+                                   dependencies: [ "VLColorKit" ])
                       ])
